@@ -7,3 +7,16 @@ edition = "2018"
 
 [dependencies]
 serenity = "0.10"
+
+dotenv = "0.15"
+
+log = "0.4"
+env_logger = "0.9"
+
+[dependencies.tokio]
+version = "1"
+features = [
+	"macros",
+	"signal",
+	"rt-multi-thread"
+]
