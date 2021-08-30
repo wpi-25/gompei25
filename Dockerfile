@@ -1,4 +1,4 @@
-FROM rust:alpine as builder
+FROM rust as builder
 
 WORKDIR /usr/src/app
 COPY . .
@@ -6,6 +6,6 @@ COPY . .
 RUN cargo install --path .
 
 FROM alpine
-COPY --from=builder /usr/local/cargo/bin/app /usr/local/bin/gompei25
+COPY --from=builder /usr/local/cargo/bin/gompei25 /usr/local/bin/gompei25
 
 CMD ["gompei25"]
