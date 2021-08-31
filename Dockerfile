@@ -1,11 +1,14 @@
-FROM rust as builder
+FROM ekidd/rust-musl-builder as builder
 
-WORKDIR /usr/src/app
-COPY . .
+ADD --chown=rust:rust . ./
 
-RUN cargo install --path .
+RUN cargo build --release
 
 FROM alpine
-COPY --from=builder /usr/local/cargo/bin/gompei25 /usr/local/bin/gompei25
 
-CMD ["gompei25"]
+RUN apk --no-cache add ca-certificates
+COPY --from=builder \
+    /home/rust/src/target/x86_64-unknown-linux-musl/release/gompei25 \
+    /usr/local/bin/gompei25
+
+ENTRYPOINT [ "gompei25" ]

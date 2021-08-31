@@ -10,6 +10,8 @@ services:
     # For simplicity, you should copy .env.example to .env and set the environment variables there
     env_file:
         - .env
+    # In production, you probably want this line uncommented so the bot restarts automatically on failure
+    # however it might not be the intended behavior.
     restart: unless-stopped
     depends_on:
       - redis
