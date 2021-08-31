@@ -13,6 +13,13 @@ use log::{error, warn, info};
 
 mod commands;
 
+pub mod util;
+
+pub struct RedisConnection;
+impl TypeMapKey for RedisConnection {
+    type Value = redis::aio::Connection;
+}
+
 use commands::meta::*;
 #[group]
 #[commands(ping)]
@@ -32,6 +39,7 @@ async fn main() {
     if let Err(e) = dotenv::dotenv() {
         warn!("Could not load .env file, have you set the environment properly? {:?}", e)
     }
+    env_logger::init();
 
     let token = env::var("DISCORD_TOKEN").expect("No token in environment");
 
@@ -49,6 +57,19 @@ async fn main() {
 
     let framework = StandardFramework::new().configure(|c| c.owners(owners).prefix(&env::var("DISCORD_PREFIX").expect("No prefix in environment"))).group(&META_GROUP);
     let mut client = Client::builder(&token).framework(framework).event_handler(Handler).await.expect("Could not create discord client");
+
+    {
+        let mut data = client.data.write().await;
+        let con = match util::data::get_redis_connection().await {
+            Ok(red) => red,
+            Err(err) => {
+                error!("Could not obtain a redis connection: {:?}", err);
+                panic!("Obtaining redis connection");
+            }
+        };
+
+        data.insert::<RedisConnection>(con)
+    }
 
     if let Err(e) = client.start().await {
         error!("Client error: {:?}", e);
