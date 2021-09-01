@@ -1,0 +1,26 @@
+name: Docker Image
+on:
+  push:
+    paths:
+      - .github/workflows/docker.yml
+      - .dockerignore
+      - docker-compose.yml
+      - Dockerfile
+  pull_request:
+    paths:
+      - .github/workflows/docker.yml
+      - .dockerignore
+      - docker-compose.yml
+      - Dockerfile
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Add .env file
+        run: touch .env
+      - name: Build the container
+        # We include some build information in docker-compose.yml so
+        # running the build this way makes sure that is set up correctly.
+        run: docker-compose build
