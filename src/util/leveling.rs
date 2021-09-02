@@ -40,6 +40,14 @@ pub async fn get_user_level(user_id: u64, mut redis_conn: redis::aio::Connection
     Ok(level_data)
 }
 
+pub async fn set_user_level(user_id: u64, mut redis_conn: redis::aio::Connection, level_data: LevelData) -> Result<(), Box<dyn std::error::Error>> {
+    redis::cmd("SET").arg(&[format!("{}:count", &user_id), level_data.msg_count.to_string()]).query_async(&mut redis_conn).await?;
+    redis::cmd("SET").arg(&[format!("{}:exp", &user_id), level_data.xp.to_string()]).query_async(&mut redis_conn).await?;
+    redis::cmd("SET").arg(&[format!("{}:last", &user_id), level_data.last_msg.timestamp().to_string()]).query_async(&mut redis_conn).await?;
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
