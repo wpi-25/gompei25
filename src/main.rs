@@ -6,12 +6,14 @@ use serenity::{
     http::Http,
     framework::{standard::macros::group, StandardFramework},
     model::gateway::Ready,
+    model::channel::Message,
     prelude::*
 };
 
 use log::{error, warn, info};
 
 mod commands;
+
 
 pub mod util;
 
@@ -29,8 +31,37 @@ struct Handler;
 
 #[async_trait]
 impl EventHandler for Handler {
-    async fn ready(&self, _: Context, ready: Ready) {
-        info!("Connected as {}", ready.user.name)
+    async fn ready(&self, _ctx: Context, ready: Ready) {
+        info!("Logged into Discord as {}", ready.user.name)
+    }
+
+    async fn message(&self, ctx: Context, msg: Message) {
+        if !msg.content.starts_with(&env::var("DISCORD_PREFIX").unwrap()) {
+            if !msg.author.bot {
+                let bot_data = ctx.data.read().await;
+                let mut redis_conn = bot_data.get::<RedisConnection>().unwrap();
+                match util::leveling::get_user_level(msg.author.id.0, &mut redis_conn).await {
+                    _ => (),
+                }
+            }
+        }
+/*        // Points
+        if !msg.content.starts_with(&env::var("DISCORD_PREFIX").unwrap()) {
+            if !msg.author.bot {
+                let bot_data = ctx.data.read().await;
+                let redis_conn = bot_data.get::<super::RedisConnection>().unwrap();
+                match super::util::leveling::get_user_level(msg.author.id.0, mut redis_conn).await {
+                    Ok(data) => {
+                        let time_since_last_msg = data.last_msg.signed_duration_since(Utc::now());
+                        info!(time_since_last_msg);
+                    },
+                    Err(e) => {
+                        error!("Error computing levels: {:?}", e);
+                        return;
+                    },
+                }
+            }
+        }*/
     }
 }
 

@@ -22,10 +22,10 @@ fn get_level_cost(level: u64) -> u64 {
     (level.pow(3) * 50).into()
 }
 
-pub async fn get_user_level(user_id: u64, mut redis_conn: redis::aio::Connection) -> Result<LevelData, Box<dyn std::error::Error>> {
-    let msg_count = redis::cmd("GET").arg(&[format!("{}:count", &user_id)]).query_async(&mut redis_conn).await?; 
-    let xp: u32 = redis::cmd("GET").arg(&[format!("{}:exp", &user_id)]).query_async(&mut redis_conn).await?;
-    let last_msg_num: i64 = redis::cmd("GET").arg(&[format!("{}:last", &user_id)]).query_async(&mut redis_conn).await?;
+pub async fn get_user_level(user_id: u64, redis_conn: &mut redis::aio::Connection) -> Result<LevelData, Box<dyn std::error::Error>> {
+    let msg_count = redis::cmd("GET").arg(&[format!("{}:count", &user_id)]).query_async(redis_conn).await?; 
+    let xp: u32 = redis::cmd("GET").arg(&[format!("{}:exp", &user_id)]).query_async(redis_conn).await?;
+    let last_msg_num: i64 = redis::cmd("GET").arg(&[format!("{}:last", &user_id)]).query_async(redis_conn).await?;
 
     let last_msg = Utc.timestamp(last_msg_num, 0);
     let level = get_level_number(xp.into());
