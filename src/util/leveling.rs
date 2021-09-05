@@ -1,5 +1,7 @@
 use chrono::prelude::*;
+use std::sync::Arc;
 
+#[derive(Clone)]
 pub struct LevelData {
     pub msg_count: u32,
     pub xp: u32,
@@ -22,10 +24,19 @@ fn get_level_cost(level: u64) -> u64 {
     (level.pow(3) * 50).into()
 }
 
-pub async fn get_user_level(user_id: u64, redis_conn: &mut redis::aio::Connection) -> Result<LevelData, Box<dyn std::error::Error>> {
-    let msg_count = redis::cmd("GET").arg(&[format!("{}:count", &user_id)]).query_async(redis_conn).await?; 
-    let xp: u32 = redis::cmd("GET").arg(&[format!("{}:exp", &user_id)]).query_async(redis_conn).await?;
-    let last_msg_num: i64 = redis::cmd("GET").arg(&[format!("{}:last", &user_id)]).query_async(redis_conn).await?;
+pub async fn get_user_level(user_id: u64, redis_conn: &mut redis::Connection) -> Result<LevelData, Box<dyn std::error::Error>> {
+    let msg_count = match redis::cmd("GET").arg(&[format!("{}:count", &user_id)]).query(redis_conn) {
+        Ok(count) => count,
+        _ => 0
+    }; 
+    let xp: u32 = match redis::cmd("GET").arg(&[format!("{}:exp", &user_id)]).query(redis_conn) {
+        Ok(xp) => xp,
+        _ => 0,
+    };
+    let last_msg_num: i64 = match redis::cmd("GET").arg(&[format!("{}:last", &user_id)]).query(redis_conn) {
+        Ok(msg) => msg,
+        _ => 0,
+    };
 
     let last_msg = Utc.timestamp(last_msg_num, 0);
     let level = get_level_number(xp.into());
@@ -40,10 +51,10 @@ pub async fn get_user_level(user_id: u64, redis_conn: &mut redis::aio::Connectio
     Ok(level_data)
 }
 
-pub async fn set_user_level(user_id: u64, mut redis_conn: redis::aio::Connection, level_data: LevelData) -> Result<(), Box<dyn std::error::Error>> {
-    redis::cmd("SET").arg(&[format!("{}:count", &user_id), level_data.msg_count.to_string()]).query_async(&mut redis_conn).await?;
-    redis::cmd("SET").arg(&[format!("{}:exp", &user_id), level_data.xp.to_string()]).query_async(&mut redis_conn).await?;
-    redis::cmd("SET").arg(&[format!("{}:last", &user_id), level_data.last_msg.timestamp().to_string()]).query_async(&mut redis_conn).await?;
+pub fn set_user_level(user_id: u64, redis_conn: &mut redis::Connection, level_data: LevelData) -> Result<(), Box<dyn std::error::Error>> {
+    redis::cmd("SET").arg(&[format!("{}:count", &user_id), level_data.msg_count.to_string()]).execute(redis_conn);
+    redis::cmd("SET").arg(&[format!("{}:exp", &user_id), level_data.xp.to_string()]).query(redis_conn)?;
+    redis::cmd("SET").arg(&[format!("{}:last", &user_id), level_data.last_msg.timestamp().to_string()]).query(redis_conn)?;
 
     Ok(())
 }

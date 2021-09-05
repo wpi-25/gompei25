@@ -7,6 +7,7 @@ use serenity::{
     framework::{standard::macros::{group, hook}, StandardFramework},
     model::gateway::Ready,
     model::channel::Message,
+    utils::MessageBuilder,
     prelude::*
 };
 
@@ -21,7 +22,7 @@ pub mod util;
 
 pub struct RedisConnection;
 impl TypeMapKey for RedisConnection {
-    type Value = redis::aio::Connection;
+    type Value = redis::Connection;
 }
 
 use commands::meta::*;
@@ -46,7 +47,16 @@ impl EventHandler for Handler {
                 match util::leveling::get_user_level(msg.author.id.0, &mut redis_conn).await {
                     Ok(data) => {
                         let time_since_last_msg = data.last_msg.signed_duration_since(Utc::now());
-                        info!("{}", time_since_last_msg);
+                        if time_since_last_msg.num_minutes() > 1 {
+                            let mut new_data = data.clone();
+                            new_data.msg_count += 1;
+                            new_data.xp += 1;
+                            new_data.last_msg = Utc::now();
+                           if let Err(e) = util::leveling::set_user_level(msg.author.id.0, &mut redis_conn, new_data) {
+
+                              error!("{:?}", e);
+                           }
+                        }
                     },
                     Err(e) => {
                         error!("Error computing levels: {:?}", e);
@@ -103,7 +113,7 @@ async fn main() {
 
     {
         let mut data = client.data.write().await;
-        let con = match util::data::get_redis_connection().await {
+        let con = match util::data::get_redis_connection() {
             Ok(red) => red,
             Err(err) => {
                 error!("Could not obtain a redis connection: {:?}", err);

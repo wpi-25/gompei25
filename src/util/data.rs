@@ -2,7 +2,7 @@ use redis::AsyncCommands;
 use log::error;
 use std::env;
 
-pub async fn get_redis_connection() -> Result<redis::aio::Connection, redis::RedisError> {
+pub fn get_redis_connection() -> Result<redis::Connection, redis::RedisError> {
     let client = match redis::Client::open(env::var("REDIS_URL").expect("No Redis URL configured - check your .env file")) {
         Ok(client) => client,
         Err(e) => {
@@ -11,5 +11,5 @@ pub async fn get_redis_connection() -> Result<redis::aio::Connection, redis::Red
         },
     };
 
-    client.get_async_connection().await
+    client.get_connection()
 }
