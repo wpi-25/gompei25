@@ -1,15 +1,7 @@
 use std::env;
 use std::collections::HashSet;
 
-use serenity::{
-    async_trait,
-    http::Http,
-    framework::{standard::macros::{group, hook}, StandardFramework},
-    model::gateway::Ready,
-    model::channel::Message,
-    utils::MessageBuilder,
-    prelude::*
-};
+use serenity::{async_trait, client::bridge::gateway::GatewayIntents, framework::{standard::macros::{group, hook}, StandardFramework}, http::Http, model::channel::Message, model::gateway::Ready, prelude::*, utils::MessageBuilder};
 
 use chrono::prelude::*;
 
@@ -19,6 +11,7 @@ mod commands;
 
 
 pub mod util;
+pub mod errors;
 
 pub struct RedisConnection;
 impl TypeMapKey for RedisConnection {
@@ -26,9 +19,14 @@ impl TypeMapKey for RedisConnection {
 }
 
 use commands::meta::*;
+use commands::leveling::*;
 #[group]
 #[commands(ping)]
 struct Meta;
+
+#[group]
+#[commands(rank, levels)]
+struct Leveling;
 
 struct Handler;
 
@@ -42,12 +40,18 @@ impl EventHandler for Handler {
     async fn message(&self, ctx: Context, msg: Message) {
         if !msg.content.starts_with(&env::var("DISCORD_PREFIX").unwrap()) {
             if !msg.author.bot {
+                println!("Eligble for points");
                 let mut bot_data = ctx.data.write().await;
                 let mut redis_conn = bot_data.get_mut::<RedisConnection>().unwrap();
-                match util::leveling::get_user_level(msg.author.id.0, &mut redis_conn).await {
+                match util::leveling::get_user_level(msg.author.id.0, &mut redis_conn) {
                     Ok(data) => {
-                        let time_since_last_msg = data.last_msg.signed_duration_since(Utc::now());
-                        if time_since_last_msg.num_minutes() > 1 {
+                        println!("Maybe???");
+                        println!("Last message: {}", data.last_msg);
+                        let time_since_last_msg = data.last_msg - Utc::now();
+                        println!("Time since last msg: {}", time_since_last_msg);
+                        println!("Number of minutes: {}", time_since_last_msg.num_minutes());
+                        if time_since_last_msg.num_minutes() < -1 {
+                            println!("Double eligble for points");
                             let mut new_data = data.clone();
                             new_data.msg_count += 1;
                             new_data.xp += 1;
@@ -108,8 +112,8 @@ async fn main() {
         Err(e) => panic!("Could not access application info: {:?}", e),
     };
 
-    let framework = StandardFramework::new().configure(|c| c.owners(owners).prefix(&env::var("DISCORD_PREFIX").expect("No prefix in environment"))).group(&META_GROUP);
-    let mut client = Client::builder(&token).framework(framework).event_handler(Handler).await.expect("Could not create discord client");
+    let framework = StandardFramework::new().configure(|c| c.owners(owners).prefix(&env::var("DISCORD_PREFIX").expect("No prefix in environment"))).group(&META_GROUP).group(&LEVELING_GROUP);
+    let mut client = Client::builder(&token).framework(framework).event_handler(Handler).intents(GatewayIntents::all()).await.expect("Could not create discord client");
 
     {
         let mut data = client.data.write().await;

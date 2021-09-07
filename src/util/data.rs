@@ -11,5 +11,12 @@ pub fn get_redis_connection() -> Result<redis::Connection, redis::RedisError> {
         },
     };
 
-    client.get_connection()
+    match client.get_connection() {
+        Ok(conn) => Ok(conn),
+        Err(e) => {
+            error!("Error getting redis connection: {:?}", e);
+            panic!("Could not connect to redis");
+            Err(e)
+        }
+    }
 }
