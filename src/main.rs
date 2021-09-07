@@ -40,18 +40,12 @@ impl EventHandler for Handler {
     async fn message(&self, ctx: Context, msg: Message) {
         if !msg.content.starts_with(&env::var("DISCORD_PREFIX").unwrap()) {
             if !msg.author.bot {
-                println!("Eligble for points");
                 let mut bot_data = ctx.data.write().await;
                 let mut redis_conn = bot_data.get_mut::<RedisConnection>().unwrap();
                 match util::leveling::get_user_level(msg.author.id.0, &mut redis_conn) {
                     Ok(data) => {
-                        println!("Maybe???");
-                        println!("Last message: {}", data.last_msg);
                         let time_since_last_msg = data.last_msg - Utc::now();
-                        println!("Time since last msg: {}", time_since_last_msg);
-                        println!("Number of minutes: {}", time_since_last_msg.num_minutes());
                         if time_since_last_msg.num_minutes() < -1 {
-                            println!("Double eligble for points");
                             let mut new_data = data.clone();
                             new_data.msg_count += 1;
                             new_data.xp += 1;
@@ -69,23 +63,6 @@ impl EventHandler for Handler {
                 }
             }
         }
-/*        // Points
-        if !msg.content.starts_with(&env::var("DISCORD_PREFIX").unwrap()) {
-            if !msg.author.bot {
-                let bot_data = ctx.data.read().await;
-                let redis_conn = bot_data.get::<super::RedisConnection>().unwrap();
-                match super::util::leveling::get_user_level(msg.author.id.0, mut redis_conn).await {
-                    Ok(data) => {
-                        let time_since_last_msg = data.last_msg.signed_duration_since(Utc::now());
-                        info!(time_since_last_msg);
-                    },
-                    Err(e) => {
-                        error!("Error computing levels: {:?}", e);
-                        return;
-                    },
-                }
-            }
-        }*/
     }
 }
 
