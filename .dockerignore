@@ -1,3 +1,9 @@
+.git
+.github
+.env.example
+.gitignore
+docker-compose.yml
+
 /target
 data/dump.rdb
 

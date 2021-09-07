@@ -1,0 +1,28 @@
+version: '3'
+
+services:
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: gompei25_bot
+    container_name: gompei25
+    # For simplicity, you should copy .env.example to .env and set the environment variables there
+    env_file:
+        - .env
+    # In production, you probably want this line uncommented so the bot restarts automatically on failure
+    # however it might not be the intended behavior.
+    restart: unless-stopped
+    depends_on:
+      - redis
+  
+  redis:
+    image: redis:alpine
+    container_name: gompei25-db
+    volumes:
+      - ./data:/data
+    # Uncomment the following lines if you want to access the database from the outside network
+    # This might be useful when developing and not wanting to manage the database as a service
+    # However it is not recommended otherwise as it leaves the database open to any other process on the host or network
+    # ports:
+    #   - 6379:6379
