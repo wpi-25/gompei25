@@ -2,9 +2,9 @@ version: '3'
 
 services:
   bot:
-    image: ghcr.io/wpi-25/gompei25  # Theoretically compose tries to pull an image before a build step so
-                                    # using this file as an override *should* skip building and go straight to ghcr
-                                    # however with my testing it doesn't.
+    image: ghcr.io/wpi-25/gompei25:master   # Theoretically compose tries to pull an image before a build step so
+                                            # using this file as an override *should* skip building and go straight to ghcr
+                                            # however with my testing it doesn't.
     container_name: gompei25
     # For simplicity, you should copy .env.example to .env and set the environment variables there
     env_file:
