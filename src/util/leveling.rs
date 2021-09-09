@@ -59,9 +59,9 @@ pub fn get_user_level(user_id: u64, redis_conn: &mut redis::Connection) -> Resul
 #[instrument(skip(redis_conn))]
 pub fn set_user_level(user_id: u64, redis_conn: &mut redis::Connection, level_data: LevelData) -> Result<()> {
     redis_conn.set::<String, u32, ()>(format!("{}:count", user_id), level_data.msg_count);
-    redis::cmd("SET").arg(&[format!("{}:exp", &user_id), level_data.xp.to_string()]).query::<()>(redis_conn);
-    redis::cmd("SET").arg(&[format!("{}:last", &user_id), level_data.last_msg.timestamp().to_string()]).query::<()>(redis_conn);
-
+    redis_conn.set::<String, u32, ()>(format!("{}:exp", &user_id), level_data.xp);
+    redis_conn.set::<String, String, ()>(format!("{}:last", &user_id), level_data.last_msg.timestamp().to_string());
+    
     Ok(())
 }
 
