@@ -89,8 +89,20 @@ async fn main() {
         Err(e) => panic!("Could not access application info: {:?}", e),
     };
 
-    let framework = StandardFramework::new().configure(|c| c.owners(owners).prefix(&env::var("DISCORD_PREFIX").expect("No prefix in environment"))).group(&META_GROUP).group(&LEVELING_GROUP);
-    let mut client = Client::builder(&token).framework(framework).event_handler(Handler).intents(GatewayIntents::all()).await.expect("Could not create discord client");
+    let framework = StandardFramework::new()
+        .configure(|c|
+            c.owners(owners)
+            .prefix(&env::var("DISCORD_PREFIX").expect("No prefix in environment"))
+        )
+        .group(&META_GROUP)
+        .group(&LEVELING_GROUP)
+        .help(&HELP);
+    let mut client = Client::builder(&token)
+        .framework(framework)
+        .event_handler(Handler)
+        .intents(GatewayIntents::all())
+        .await
+        .expect("Could not create discord client");
 
     {
         let mut data = client.data.write().await;
