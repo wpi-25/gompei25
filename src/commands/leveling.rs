@@ -7,9 +7,10 @@ use crate::util::leveling::get_user_level;
 use crate::RedisConnection;
 use tracing::error;
 
+use crate::errors::GompeiError;
+
 use std::collections::HashMap;
 use std::cmp::Ordering;
-
 #[command]
 #[description = "Gets your level and such"]
 #[only_in(guilds)]
@@ -109,32 +110,22 @@ pub async fn levels(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let mut bot_data = ctx.data.write().await;
     let redis_conn = bot_data.get_mut::<RedisConnection>().unwrap();
     let leaderboard = get_ranked_leaderboard(&msg.guild(&ctx).await.unwrap(), redis_conn).await;
-    println!("Got ranked leaderboard");
 
-    let mut PAGE_SIZE = 10;
-    if leaderboard.len() < PAGE_SIZE {
-        PAGE_SIZE = (leaderboard.len() - 1);
-    }
+    let PAGE_SIZE = 10;
 
-    let page_num: usize = match args.parse::<usize>() {
-        Ok(page) => page,
-        Err(_) => 1
+    let mut iter = leaderboard.chunks_mut(PAGE_SIZE);
+
+    let page_num = match args.parse::<usize>() {
+        Ok(num) => num,
+        Err(_) => 1,
     };
-    println!("Page num: {}", page_num);
-    println!("Leaderboard: {:?}", leaderboard);
 
-    let (tmp, tmp2) = leaderboard.split_at(page_num * PAGE_SIZE);
-    println!("mid: {}", page_num * PAGE_SIZE);
-    println!("Leaderboard slice: {:?}", tmp);
-    println!("Second leaderboard slice: {:?}", tmp2);
+    let &mut page: &mut Vec<LeaderboardData> = &mut Vec::with_capacity(PAGE_SIZE);
 
-    let mut page: Vec<LeaderboardData> = Vec::new();
-
-    for (i, l) in tmp.iter().enumerate() {
-        if i < PAGE_SIZE as usize {
-            page.push(l.clone());
-        }
-    }
+    page = match iter.nth(page_num) {
+        Some(&mut p) => p,
+        None => iter.nth(1).unwrap(),
+    };
 
     page.sort();
 
