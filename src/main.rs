@@ -1,25 +1,36 @@
-use std::env;
 use std::collections::HashSet;
+use std::env;
 
-use serenity::{async_trait, client::bridge::gateway::GatewayIntents, framework::{standard::macros::{group, hook}, StandardFramework}, http::Http, model::channel::Message, model::gateway::Ready, prelude::*, utils::MessageBuilder};
+use serenity::{
+    async_trait,
+    client::bridge::gateway::GatewayIntents,
+    framework::{
+        standard::macros::{group, hook},
+        StandardFramework,
+    },
+    http::Http,
+    model::channel::Message,
+    model::gateway::Ready,
+    prelude::*,
+    utils::MessageBuilder,
+};
 
 use chrono::prelude::*;
 
-use tracing::{info, error, warn, instrument};
+use tracing::{error, info, instrument, warn};
 
 mod commands;
 
-
-pub mod util;
 pub mod errors;
+pub mod util;
 
 pub struct RedisConnection;
 impl TypeMapKey for RedisConnection {
     type Value = redis::Connection;
 }
 
-use commands::meta::*;
 use commands::leveling::*;
+use commands::meta::*;
 #[group]
 #[commands(ping)]
 struct Meta;
@@ -38,7 +49,10 @@ impl EventHandler for Handler {
 
     #[instrument(skip(self, ctx))]
     async fn message(&self, ctx: Context, msg: Message) {
-        if !msg.content.starts_with(&env::var("DISCORD_PREFIX").unwrap()) {
+        if !msg
+            .content
+            .starts_with(&env::var("DISCORD_PREFIX").unwrap())
+        {
             if !msg.author.bot {
                 let mut bot_data = ctx.data.write().await;
                 let mut redis_conn = bot_data.get_mut::<RedisConnection>().unwrap();
@@ -50,16 +64,19 @@ impl EventHandler for Handler {
                             new_data.msg_count += 1;
                             new_data.xp += 1;
                             new_data.last_msg = Utc::now();
-                           if let Err(e) = util::leveling::set_user_level(msg.author.id.0, &mut redis_conn, new_data) {
-
-                              error!("{:?}", e);
-                           }
+                            if let Err(e) = util::leveling::set_user_level(
+                                msg.author.id.0,
+                                &mut redis_conn,
+                                new_data,
+                            ) {
+                                error!("{:?}", e);
+                            }
                         }
-                    },
+                    }
                     Err(e) => {
                         error!("Error computing levels: {:?}", e);
                         return;
-                    },
+                    }
                 }
             }
         }
@@ -70,7 +87,10 @@ impl EventHandler for Handler {
 #[instrument]
 async fn main() {
     if let Err(e) = dotenv::dotenv() {
-        warn!("Could not load .env file, have you set the environment properly? {:?}", e)
+        warn!(
+            "Could not load .env file, have you set the environment properly? {:?}",
+            e
+        )
     }
 
     tracing_subscriber::fmt::init();
@@ -89,8 +109,19 @@ async fn main() {
         Err(e) => panic!("Could not access application info: {:?}", e),
     };
 
-    let framework = StandardFramework::new().configure(|c| c.owners(owners).prefix(&env::var("DISCORD_PREFIX").expect("No prefix in environment"))).group(&META_GROUP).group(&LEVELING_GROUP);
-    let mut client = Client::builder(&token).framework(framework).event_handler(Handler).intents(GatewayIntents::all()).await.expect("Could not create discord client");
+    let framework = StandardFramework::new()
+        .configure(|c| {
+            c.owners(owners)
+                .prefix(&env::var("DISCORD_PREFIX").expect("No prefix in environment"))
+        })
+        .group(&META_GROUP)
+        .group(&LEVELING_GROUP);
+    let mut client = Client::builder(&token)
+        .framework(framework)
+        .event_handler(Handler)
+        .intents(GatewayIntents::all())
+        .await
+        .expect("Could not create discord client");
 
     {
         let mut data = client.data.write().await;
