@@ -112,8 +112,6 @@ async fn get_ranked_leaderboard(
 
     leaderboard.sort();
 
-
-
     leaderboard
 }
 
@@ -173,3 +171,4 @@ pub async fn levels(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 
     Ok(())
 }
+

@@ -6,6 +6,7 @@ use redis::Commands;
 
 use tracing::{error, info, instrument};
 
+
 use crate::commands::leveling::LeaderboardData;
 
 #[derive(Clone, Debug)]

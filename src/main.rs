@@ -31,6 +31,7 @@ impl TypeMapKey for RedisConnection {
 
 use commands::leveling::*;
 use commands::meta::*;
+
 #[group]
 #[commands(ping)]
 struct Meta;
@@ -116,7 +117,7 @@ async fn main() {
         })
         .group(&META_GROUP)
         .group(&LEVELING_GROUP);
-    let mut client = Client::builder(&token)
+       let mut client = Client::builder(&token)
         .framework(framework)
         .event_handler(Handler)
         .intents(GatewayIntents::all())
