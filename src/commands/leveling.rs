@@ -125,8 +125,9 @@ pub async fn levels(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     println!("Called levels");
     let mut bot_data = ctx.data.write().await;
     let redis_conn = bot_data.get_mut::<RedisConnection>().unwrap();
-    let leaderboard =
+    let mut leaderboard =
         get_ranked_leaderboard(&msg.guild(&ctx).await.unwrap(), redis_conn, ctx).await;
+    leaderboard.sort();
 
     let PAGE_SIZE = 10;
 
