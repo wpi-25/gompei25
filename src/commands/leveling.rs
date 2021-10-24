@@ -120,7 +120,6 @@ async fn get_ranked_leaderboard(
 #[max_args(1)]
 #[usage("[page]")]
 pub async fn levels(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
-    println!("Called levels");
     let mut bot_data = ctx.data.write().await;
     let redis_conn = bot_data.get_mut::<RedisConnection>().unwrap();
     let mut leaderboard =
@@ -141,11 +140,9 @@ pub async fn levels(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         None => iter.nth(1).unwrap().to_vec(),
     };
 
-        info!("{:?}", page);
 
     msg.channel_id
         .send_message(&ctx.http, |m| {
-            m.content("Test");
             m.embed(|e| {
                 e.title("Leaderboard");
                 e.description(format!(
