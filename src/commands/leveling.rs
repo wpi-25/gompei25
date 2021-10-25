@@ -1,13 +1,15 @@
-use chrono::Utc;
-use serenity::framework::standard::Args;
-use serenity::framework::standard::{macros::command, CommandResult};
-use serenity::model::prelude::*;
-use serenity::prelude::*;
 use crate::util::leveling::get_user_level;
 use crate::RedisConnection;
-use tracing::error;
 
-use std::collections::HashMap;
+use serenity::framework::standard::Args;
+use serenity::framework::standard::{macros::command, CommandResult};
+use serenity::futures::StreamExt;
+use serenity::http::CacheHttp;
+use serenity::model::guild::MembersIter;
+use serenity::model::prelude::*;
+use serenity::prelude::*;
+use tracing::{error, info};
+
 use std::cmp::Ordering;
 
 #[command]
@@ -15,14 +17,15 @@ use std::cmp::Ordering;
 #[only_in(guilds)]
 #[num_args(0)]
 pub async fn rank(ctx: &Context, msg: &Message) -> CommandResult {
-
     let mut bot_data = ctx.data.write().await;
     let mut redis_conn = bot_data.get_mut::<RedisConnection>().unwrap();
 
     let level_data = match get_user_level(msg.author.id.0, redis_conn) {
         Ok(data) => data,
         Err(e) => {
-            msg.channel_id.say(&ctx.http, format!("Could not get your points: {:?}", e)).await;
+            msg.channel_id
+                .say(&ctx.http, format!("Could not get your points: {:?}", e))
+                .await;
             return Ok(());
         }
     };
@@ -30,20 +33,22 @@ pub async fn rank(ctx: &Context, msg: &Message) -> CommandResult {
         Some(url) => url,
         None => msg.author.default_avatar_url(),
     };
-    msg.channel_id.send_message(&ctx.http, |m| {
-        m.embed(|mut e| {
-            e.author(|m| {
-                m.icon_url(avatar_url);
-                m.name(msg.author.name.clone());
-                m
+    msg.channel_id
+        .send_message(&ctx.http, |m| {
+            m.embed(|mut e| {
+                e.author(|m| {
+                    m.icon_url(avatar_url);
+                    m.name(msg.author.name.clone());
+                    m
+                });
+                e.field("Messages", level_data.msg_count.to_string(), true);
+                e.field("XP", level_data.xp.to_string(), true);
+                e.field("Level", level_data.level.to_string(), true);
+                e
             });
-            e.field("Messages", level_data.msg_count.to_string(), true);
-            e.field("XP", level_data.xp.to_string(), true);
-            e.field("Level", level_data.level.to_string(), true);
-            e
-        });
-        m
-    }).await?;
+            m
+        })
+        .await?;
 
     Ok(())
 }
@@ -63,36 +68,46 @@ impl PartialOrd for LeaderboardData {
 }
 impl Ord for LeaderboardData {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.xp.cmp(&other.xp)
+        other.xp.cmp(&self.xp)
     }
 }
 
-impl Eq for LeaderboardData {
-    
-}
+impl Eq for LeaderboardData {}
 impl PartialEq for LeaderboardData {
     fn eq(&self, other: &Self) -> bool {
         self.xp == other.xp
     }
 }
 
-async fn get_ranked_leaderboard(guild: &Guild, redis_conn: &mut redis::Connection) -> Vec<LeaderboardData> {
+async fn get_ranked_leaderboard(
+    guild: &Guild,
+    redis_conn: &mut redis::Connection,
+    ctx: &Context,
+) -> Vec<LeaderboardData> {
     let mut leaderboard = Vec::new();
-
-    for (id, member) in guild.members.iter() {
-        let level_data = match get_user_level(id.0, redis_conn) {
-            Ok(data) => data,
+    let mut members_iter = guild.id.members_iter(ctx).boxed();
+    while let Some(member_res) = members_iter.next().await {
+        match member_res {
+            Ok(member) => {
+                let level_data = match get_user_level(member.user.id.0, redis_conn) {
+                    Ok(data) => data,
+                    Err(e) => {
+                        error!("Error fetching level data: {:?}", e);
+                        continue;
+                    }
+                };
+                leaderboard.push(LeaderboardData {
+                    member: member.clone(),
+                    xp: level_data.xp,
+                    level: level_data.level,
+                    msg_count: level_data.msg_count,
+                });
+            }
             Err(e) => {
-                error!("Error fetching level data: {:?}", e);
+                error!("Error fetching member: {:?}", e);
                 continue;
             }
-        };
-        leaderboard.push(LeaderboardData {
-            member: member.clone(),
-            xp: level_data.xp,
-            level: level_data.level,
-            msg_count: level_data.msg_count,
-        });
+        }
     }
 
     leaderboard.sort();
@@ -105,55 +120,52 @@ async fn get_ranked_leaderboard(guild: &Guild, redis_conn: &mut redis::Connectio
 #[max_args(1)]
 #[usage("[page]")]
 pub async fn levels(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
-    println!("Called levels");
     let mut bot_data = ctx.data.write().await;
     let redis_conn = bot_data.get_mut::<RedisConnection>().unwrap();
-    let leaderboard = get_ranked_leaderboard(&msg.guild(&ctx).await.unwrap(), redis_conn).await;
-    println!("Got ranked leaderboard");
+    let mut leaderboard =
+        get_ranked_leaderboard(&msg.guild(&ctx).await.unwrap(), redis_conn, ctx).await;
+    leaderboard.sort();
 
-    let mut PAGE_SIZE = 10;
-    if leaderboard.len() < PAGE_SIZE {
-        PAGE_SIZE = (leaderboard.len() - 1);
-    }
+    let PAGE_SIZE = 10;
 
-    let page_num: usize = match args.parse::<usize>() {
-        Ok(page) => page,
-        Err(_) => 1
+    let mut iter = leaderboard.chunks(PAGE_SIZE);
+
+    let page_num = match args.parse::<usize>() {
+        Ok(num) => num,
+        Err(_) => 1,
     };
-    println!("Page num: {}", page_num);
-    println!("Leaderboard: {:?}", leaderboard);
 
-    let (tmp, tmp2) = leaderboard.split_at(page_num * PAGE_SIZE);
-    println!("mid: {}", page_num * PAGE_SIZE);
-    println!("Leaderboard slice: {:?}", tmp);
-    println!("Second leaderboard slice: {:?}", tmp2);
-
-    let mut page: Vec<LeaderboardData> = Vec::new();
-
-    for (i, l) in tmp.iter().enumerate() {
-        if i < PAGE_SIZE as usize {
-            page.push(l.clone());
-        }
-    }
-
-    page.sort();
+    let page = match iter.nth(page_num) {
+        Some(p) => p.to_vec(),
+        None => iter.nth(1).unwrap().to_vec(),
+    };
 
 
-    msg.channel_id.send_message(&ctx.http, |m| {
-        m.embed(|e| {
-            e.title("Leaderboard");
-            e.description(format!("**Page {}:** {}-{} of {}", page_num.to_string(), PAGE_SIZE * (page_num - 1) + 1, PAGE_SIZE * page_num, leaderboard.len()));
+    msg.channel_id
+        .send_message(&ctx.http, |m| {
+            m.embed(|e| {
+                e.title("Leaderboard");
+                e.description(format!(
+                    "**Page {}:** {}-{} of {}",
+                    page_num.to_string(),
+                    PAGE_SIZE * (page_num - 1) + 1,
+                    PAGE_SIZE * page_num,
+                    leaderboard.len()
+                ));
 
-            for (i, l) in page.iter().enumerate() {
-                e.field(format!("#{}: {}", i+1, l.member), format!("{} Exp.\tLvl. {}\t{} Messages", l.xp, l.level, l.msg_count), false);
-            }
-
-            e.timestamp(Utc::now().to_string());
-
-            e
-        });
-        m
-    }).await?;
+                for (i, l) in page.iter().enumerate() {
+                    e.field(
+                        format!("#{}: {}", i + 1, l.member.display_name()),
+                        format!("{} Exp.\tLvl. {}\t{} Messages", l.xp, l.level, l.msg_count),
+                        false,
+                    );
+                }
+                e
+            });
+            m
+        })
+        .await?;
 
     Ok(())
 }
+

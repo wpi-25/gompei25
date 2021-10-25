@@ -2,17 +2,17 @@ use derive_more::Display;
 
 #[derive(Display)]
 pub enum GompeiError {
-    #[display(fmt="Command Error: {}", _0)]
+    #[display(fmt = "Command Error: {}", _0)]
     CommandError(String),
 
-    #[display(fmt="Database Error")]
+    #[display(fmt = "Database Error")]
     DatabaseError,
 
-    #[display(fmt="Bot error: {}", _0)]
+    #[display(fmt = "Bot error: {}", _0)]
     SerenityError(String),
 
-    #[display(fmt="Unknown Error: {}", _0)]
-    GenericError(String)
+    #[display(fmt = "Unknown Error: {}", _0)]
+    GenericError(String),
 }
 
 impl From<Box<dyn std::error::Error>> for GompeiError {
@@ -27,7 +27,7 @@ impl From<serenity::Error> for GompeiError {
         match e {
             BotLibErr::Gateway(e) => GompeiError::SerenityError(format!("Gateway Error: {:?}", e)),
             BotLibErr::Model(e) => GompeiError::SerenityError(format!("Model Error: {:?}", e)),
-            _ => GompeiError::SerenityError(format!("Unknown Error."))
+            _ => GompeiError::SerenityError(format!("Unknown Error.")),
         }
     }
 }
@@ -37,3 +37,4 @@ impl From<redis::RedisError> for GompeiError {
         GompeiError::DatabaseError
     }
 }
+
