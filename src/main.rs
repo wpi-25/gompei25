@@ -31,6 +31,7 @@ impl TypeMapKey for RedisConnection {
 
 use commands::leveling::*;
 use commands::meta::*;
+use commands::fun::*;
 
 #[group]
 #[commands(ping)]
@@ -39,6 +40,10 @@ struct Meta;
 #[group]
 #[commands(rank, levels)]
 struct Leveling;
+
+#[group]
+#[commands(xkcd)]
+struct Fun;
 
 struct Handler;
 
@@ -116,7 +121,8 @@ async fn main() {
                 .prefix(&env::var("DISCORD_PREFIX").expect("No prefix in environment"))
         })
         .group(&META_GROUP)
-        .group(&LEVELING_GROUP);
+        .group(&LEVELING_GROUP)
+        .group(&FUN_GROUP);
        let mut client = Client::builder(&token)
         .framework(framework)
         .event_handler(Handler)
