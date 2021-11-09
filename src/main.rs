@@ -1,19 +1,10 @@
 use std::collections::HashSet;
 use std::env;
 
-use serenity::{
-    async_trait,
-    client::bridge::gateway::GatewayIntents,
-    framework::{
+use serenity::{async_trait, client::bridge::gateway::GatewayIntents, framework::{
         standard::macros::{group, hook},
         StandardFramework,
-    },
-    http::Http,
-    model::channel::Message,
-    model::gateway::Ready,
-    prelude::*,
-    utils::MessageBuilder,
-};
+    }, http::Http, model::{channel::{Attachment, Message, Reaction, ReactionType}, id::ChannelId}, model::gateway::Ready, prelude::*, utils::MessageBuilder};
 
 use chrono::prelude::*;
 
@@ -32,6 +23,7 @@ impl TypeMapKey for RedisConnection {
 use commands::leveling::*;
 use commands::meta::*;
 use commands::fun::*;
+use commands::staff::*;
 
 #[group]
 #[commands(ping)]
@@ -45,12 +37,62 @@ struct Leveling;
 #[commands(xkcd)]
 struct Fun;
 
+#[group]
+#[commands(clear, sendmsg)]
+struct Staff;
+
 struct Handler;
 
 #[async_trait]
 impl EventHandler for Handler {
     async fn ready(&self, _ctx: Context, ready: Ready) {
         info!("Logged into Discord as {}", ready.user.name)
+    }
+
+    async fn reaction_add(&self, ctx: Context, reaction: Reaction) {
+        if let None = reaction.guild_id {
+            return;
+        }
+
+        if let Ok(chan) = env::var("LOGGING_CHANNEL") {
+            let channel_id = ChannelId(chan.parse::<u64>().unwrap()); 
+
+            let escalate_emoji = vec!["❗", "‼️", "⁉️", "❕"];
+            match reaction.emoji {
+                ReactionType::Unicode(ref tmp) => {
+                    if escalate_emoji.contains(&tmp.as_str()) {
+                        let message = reaction.channel_id.message(&ctx, reaction.message_id).await.unwrap();
+                        if message.embeds.len() == 0 {
+                        channel_id.send_message(&ctx.http, |m| {
+                            m.content(format!("Message forwarded by <@{}> from <#{}>", reaction.clone().user_id.unwrap(), channel_id.0));
+                            m.embed(|e| {
+                                e.author(|a| {
+                                    a.name(message.clone().author.name);
+                                    a.icon_url(message.clone().author.face());
+                                    a
+                                });
+                                e.description(message.clone().content);
+                                e.field("Link", message.link(), true);
+                                e
+                            });
+                            m
+                        }).await.unwrap();
+                        } else {
+                            channel_id.send_message(&ctx.http, |m| {
+                                m.content(format!("Message forwarded by <@{}> from <#{}>\n\n", reaction.clone().user_id.unwrap(), channel_id.0));
+                                m.set_embed(message.embeds[0].clone().into());
+                                m
+                            }).await.unwrap();
+                            }
+                    } else {
+                        return;
+                    }
+                },
+                _ => {
+                    return;
+                }
+            }
+        }
     }
 
     #[instrument(skip(self, ctx))]
@@ -122,7 +164,8 @@ async fn main() {
         })
         .group(&META_GROUP)
         .group(&LEVELING_GROUP)
-        .group(&FUN_GROUP);
+        .group(&FUN_GROUP)
+        .group(&STAFF_GROUP);
        let mut client = Client::builder(&token)
         .framework(framework)
         .event_handler(Handler)
