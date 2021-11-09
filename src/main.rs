@@ -162,6 +162,7 @@ async fn main() {
             c.owners(owners)
                 .prefix(&env::var("DISCORD_PREFIX").expect("No prefix in environment"))
         })
+        .help(&HELP)
         .group(&META_GROUP)
         .group(&LEVELING_GROUP)
         .group(&FUN_GROUP)
