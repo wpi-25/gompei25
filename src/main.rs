@@ -71,6 +71,7 @@ impl EventHandler for Handler {
                                 files.push(a.download().await.unwrap());
                             }
                         }
+                        if message.embeds.len() == 0 {
                         channel_id.send_message(&ctx.http, |m| {
                             m.content(format!("Message forwarded by <@{}> from <#{}>", reaction.clone().user_id.unwrap(), channel_id.0));
                             m.embed(|e| {
@@ -85,6 +86,13 @@ impl EventHandler for Handler {
                             });
                             m
                         }).await.unwrap();
+                        } else {
+                            channel_id.send_message(&ctx.http, |m| {
+                                m.content(format!("Message forwarded by <@{}> from <#{}>\n\n", reaction.clone().user_id.unwrap(), channel_id.0));
+                                m.set_embed(message.embeds[0].clone().into());
+                                m
+                            }).await.unwrap();
+                            }
                     } else {
                         return;
                     }
