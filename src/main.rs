@@ -64,7 +64,7 @@ impl EventHandler for Handler {
                         let message = reaction.channel_id.message(&ctx, reaction.message_id).await.unwrap();
                         if message.embeds.len() == 0 {
                         channel_id.send_message(&ctx.http, |m| {
-                            m.content(format!("Message forwarded by <@{}> from <#{}>", reaction.clone().user_id.unwrap(), channel_id.0));
+                            m.content(format!("Message forwarded by <@{}> from <#{}>", reaction.clone().user_id.unwrap(), reaction.channel_id.0));
                             m.embed(|e| {
                                 e.author(|a| {
                                     a.name(message.clone().author.name);
@@ -162,6 +162,7 @@ async fn main() {
             c.owners(owners)
                 .prefix(&env::var("DISCORD_PREFIX").expect("No prefix in environment"))
         })
+        .help(&HELP)
         .group(&META_GROUP)
         .group(&LEVELING_GROUP)
         .group(&FUN_GROUP)

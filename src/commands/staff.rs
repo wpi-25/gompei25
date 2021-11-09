@@ -6,6 +6,7 @@ use serenity::framework::standard::{macros::command, CommandResult, Args};
 #[description = "Removes the specified number of messages from a channel"]
 #[num_args(1)]
 #[required_permissions("MANAGE_MESSAGES")]
+#[usage("<number of messages>")]
 pub async fn clear(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let amount: u64 = args.parse::<u64>()?;
     if amount > 100 {
@@ -29,6 +30,7 @@ pub async fn clear(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 #[description = "Sends a message as the bot"]
 #[min_args(2)]
 #[required_permissions("MANAGE_MESSAGES")]
+#[usage("<#channel> <message>")]
 pub async fn sendmsg(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let target: ChannelId = args.parse::<ChannelId>()?;
     args.advance();
