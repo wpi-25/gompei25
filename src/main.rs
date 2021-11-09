@@ -62,15 +62,6 @@ impl EventHandler for Handler {
                 ReactionType::Unicode(ref tmp) => {
                     if escalate_emoji.contains(&tmp.as_str()) {
                         let message = reaction.channel_id.message(&ctx, reaction.message_id).await.unwrap();
-                        let mut files: Vec<Vec<u8>> = Vec::new();
-                        let mut urls: String = String::from(" ");
-                        for a in &message.attachments {
-                            if a.size > 8388608 {
-                               urls.push_str(&a.url);     
-                            } else {
-                                files.push(a.download().await.unwrap());
-                            }
-                        }
                         if message.embeds.len() == 0 {
                         channel_id.send_message(&ctx.http, |m| {
                             m.content(format!("Message forwarded by <@{}> from <#{}>", reaction.clone().user_id.unwrap(), channel_id.0));
