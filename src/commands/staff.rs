@@ -27,7 +27,7 @@ pub async fn clear(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 
 #[command]
 #[description = "Sends a message as the bot"]
-#[num_args(2)]
+#[min_args(2)]
 #[required_permissions("MANAGE_MESSAGES")]
 pub async fn sendmsg(ctx: &Context, msg: &Message, mut args: Args) -> CommandResult {
     let target: ChannelId = args.parse::<ChannelId>()?;
@@ -35,6 +35,8 @@ pub async fn sendmsg(ctx: &Context, msg: &Message, mut args: Args) -> CommandRes
     let message: String = args.rest().into();
 
     target.say(&ctx, message).await?;
+
+    msg.react(&ctx, '✅').await?;
 
     Ok(())
 }
