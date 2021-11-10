@@ -1,10 +1,22 @@
 use std::collections::HashSet;
 use std::env;
 
-use serenity::{async_trait, client::bridge::gateway::GatewayIntents, framework::{
+use serenity::{
+    async_trait,
+    client::bridge::gateway::GatewayIntents,
+    framework::{
         standard::macros::{group, hook},
         StandardFramework,
-    }, http::Http, model::{channel::{Attachment, Message, Reaction, ReactionType}, id::ChannelId}, model::gateway::Ready, prelude::*, utils::MessageBuilder};
+    },
+    http::Http,
+    model::gateway::Ready,
+    model::{
+        channel::{Attachment, Message, Reaction, ReactionType},
+        id::ChannelId,
+    },
+    prelude::*,
+    utils::MessageBuilder,
+};
 
 use chrono::prelude::*;
 
@@ -13,6 +25,7 @@ use tracing::{error, info, instrument, warn};
 mod commands;
 
 pub mod errors;
+pub mod hooks;
 pub mod util;
 
 pub struct RedisConnection;
@@ -20,9 +33,9 @@ impl TypeMapKey for RedisConnection {
     type Value = redis::Connection;
 }
 
+use commands::fun::*;
 use commands::leveling::*;
 use commands::meta::*;
-use commands::fun::*;
 use commands::staff::*;
 
 #[group]
@@ -55,39 +68,57 @@ impl EventHandler for Handler {
         }
 
         if let Ok(chan) = env::var("LOGGING_CHANNEL") {
-            let channel_id = ChannelId(chan.parse::<u64>().unwrap()); 
+            let channel_id = ChannelId(chan.parse::<u64>().unwrap());
 
             let escalate_emoji = vec!["❗", "‼️", "⁉️", "❕"];
             match reaction.emoji {
                 ReactionType::Unicode(ref tmp) => {
                     if escalate_emoji.contains(&tmp.as_str()) {
-                        let message = reaction.channel_id.message(&ctx, reaction.message_id).await.unwrap();
+                        let message = reaction
+                            .channel_id
+                            .message(&ctx, reaction.message_id)
+                            .await
+                            .unwrap();
                         if message.embeds.len() == 0 {
-                        channel_id.send_message(&ctx.http, |m| {
-                            m.content(format!("Message forwarded by <@{}> from <#{}>", reaction.clone().user_id.unwrap(), reaction.channel_id.0));
-                            m.embed(|e| {
-                                e.author(|a| {
-                                    a.name(message.clone().author.name);
-                                    a.icon_url(message.clone().author.face());
-                                    a
-                                });
-                                e.description(message.clone().content);
-                                e.field("Link", message.link(), true);
-                                e
-                            });
-                            m
-                        }).await.unwrap();
+                            channel_id
+                                .send_message(&ctx.http, |m| {
+                                    m.content(format!(
+                                        "Message forwarded by <@{}> from <#{}>",
+                                        reaction.clone().user_id.unwrap(),
+                                        reaction.channel_id.0
+                                    ));
+                                    m.embed(|e| {
+                                        e.author(|a| {
+                                            a.name(message.clone().author.name);
+                                            a.icon_url(message.clone().author.face());
+                                            a
+                                        });
+                                        e.description(message.clone().content);
+                                        e.field("Link", message.link(), true);
+                                        e
+                                    });
+                                    m
+                                })
+                                .await
+                                .unwrap();
                         } else {
-                            channel_id.send_message(&ctx.http, |m| {
-                                m.content(format!("Message forwarded by <@{}> from <#{}>\n\n", reaction.clone().user_id.unwrap(), channel_id.0));
-                                m.set_embed(message.embeds[0].clone().into());
-                                m
-                            }).await.unwrap();
-                            }
+                            channel_id
+                                .send_message(&ctx.http, |m| {
+                                    m.content(format!(
+                                        "Message forwarded by <@{}> from <#{}>\n\n",
+                                        reaction.clone().user_id.unwrap(),
+                                        channel_id.0
+                                    ));
+                                    m.set_embed(message.embeds[0].clone().into());
+                                    m
+                                })
+                                .await
+                                .unwrap();
+                        }
                     } else {
                         return;
                     }
-                },
+                }
                 _ => {
                     return;
                 }
@@ -162,12 +193,13 @@ async fn main() {
             c.owners(owners)
                 .prefix(&env::var("DISCORD_PREFIX").expect("No prefix in environment"))
         })
+        .on_dispatch_error(hooks::dispatch_error_hook)
         .help(&HELP)
         .group(&META_GROUP)
         .group(&LEVELING_GROUP)
         .group(&FUN_GROUP)
         .group(&STAFF_GROUP);
-       let mut client = Client::builder(&token)
+    let mut client = Client::builder(&token)
         .framework(framework)
         .event_handler(Handler)
         .intents(GatewayIntents::all())
