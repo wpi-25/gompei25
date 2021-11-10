@@ -100,6 +100,7 @@ impl EventHandler for Handler {
                                 })
                                 .await
                                 .unwrap();
+
                         } else {
                             channel_id
                                 .send_message(&ctx.http, |m| {
