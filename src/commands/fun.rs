@@ -1,10 +1,10 @@
 //! Group of "fun" commands
 //!
 //! Commands that don't really have a practical use but are still fun to have
-use serenity::prelude::*;
-use serenity::model::prelude::*;
 use serenity::framework::standard::Args;
 use serenity::framework::standard::{macros::command, CommandResult};
+use serenity::model::prelude::*;
+use serenity::prelude::*;
 use std::collections::HashMap;
 
 use serde::Deserialize;
@@ -36,18 +36,20 @@ pub async fn xkcd(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 
     let res = reqwest::get(url).await?.json::<XkcdResponse>().await?;
 
-    response_msg.edit(&ctx.http, |m| {
-        m.content("");
-        m.embed(|e| {
-            e.title(format!("#{} ({})", res.num, res.safe_title));
-            e.image(res.img.clone());
-            e.field("Image URL", res.img, true);
-            e.field("Alt text", res.alt, true);
+    response_msg
+        .edit(&ctx.http, |m| {
+            m.content("");
+            m.embed(|e| {
+                e.title(format!("#{} ({})", res.num, res.safe_title));
+                e.image(res.img.clone());
+                e.field("Image URL", res.img, true);
+                e.field("Alt text", res.alt, true);
 
-            e
-        });
-        m
-    }).await?;
+                e
+            });
+            m
+        })
+        .await?;
 
     Ok(())
 }

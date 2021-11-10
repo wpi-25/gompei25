@@ -37,4 +37,3 @@ impl From<redis::RedisError> for GompeiError {
         GompeiError::DatabaseError
     }
 }
-

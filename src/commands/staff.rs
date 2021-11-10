@@ -1,6 +1,6 @@
-use serenity::prelude::*;
+use serenity::framework::standard::{macros::command, Args, CommandResult};
 use serenity::model::prelude::*;
-use serenity::framework::standard::{macros::command, CommandResult, Args};
+use serenity::prelude::*;
 
 #[command]
 #[description = "Removes the specified number of messages from a channel"]
@@ -10,16 +10,22 @@ use serenity::framework::standard::{macros::command, CommandResult, Args};
 pub async fn clear(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let amount: u64 = args.parse::<u64>()?;
     if amount > 100 {
-        msg.channel_id.say(&ctx, "Cannot delete more than 100 messages").await?;
+        msg.channel_id
+            .say(&ctx, "Cannot delete more than 100 messages")
+            .await?;
         return Ok(());
     }
 
-    let messages = msg.channel_id.messages(&ctx, |r| {
-        r.before(msg.id).limit(amount)
-    }).await?;
+    let messages = msg
+        .channel_id
+        .messages(&ctx, |r| r.before(msg.id).limit(amount))
+        .await?;
 
     msg.channel_id.delete_messages(&ctx, messages).await?;
-    let confirmation_msg = msg.channel_id.say(&ctx, format!("Deleted {} messages", amount)).await?;
+    let confirmation_msg = msg
+        .channel_id
+        .say(&ctx, format!("Deleted {} messages", amount))
+        .await?;
     msg.delete(&ctx).await?;
     tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
     confirmation_msg.delete(&ctx).await?;

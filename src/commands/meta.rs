@@ -1,14 +1,9 @@
-use std::{
-    collections::HashSet
-};
+use std::collections::HashSet;
 
 use serenity::framework::standard::{
     help_commands,
     macros::{command, help},
-    Args,
-    CommandGroup,
-    CommandResult,
-    HelpOptions
+    Args, CommandGroup, CommandResult, HelpOptions,
 };
 use serenity::model::prelude::*;
 use serenity::prelude::*;
