@@ -140,7 +140,6 @@ pub async fn levels(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         None => iter.nth(1).unwrap().to_vec(),
     };
 
-
     msg.channel_id
         .send_message(&ctx.http, |m| {
             m.embed(|e| {
@@ -168,4 +167,3 @@ pub async fn levels(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 
     Ok(())
 }
-
