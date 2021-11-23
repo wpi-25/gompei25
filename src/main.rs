@@ -22,12 +22,18 @@ use chrono::prelude::*;
 
 use tracing::{error, info, instrument, warn};
 
+use sqlx::postgres::PgPool;
+
 mod commands;
 
 pub mod errors;
 pub mod hooks;
 pub mod util;
 
+pub struct PostgresPool;
+impl TypeMapKey for PostgresPool {
+    type Value = PgPool;
+}
 pub struct RedisConnection;
 impl TypeMapKey for RedisConnection {
     type Value = redis::Connection;
@@ -216,8 +222,22 @@ async fn main() {
             }
         };
 
-        data.insert::<RedisConnection>(con)
+        let pg = match util::data::get_db_pool().await {
+            Ok(conn) => conn,
+            Err(err) => {
+                error!("Could not obtain a postgres connection: {:?}", err);
+                panic!("Obtaining postgres connection");
+            }
+        };
+
+        data.insert::<RedisConnection>(con);
+        info!("Running migrations");
+        sqlx::migrate!("./migrations/").run(&pg).await;
+
+        data.insert::<PostgresPool>(pg);
+
     }
+
 
     info!("Starting client");
     if let Err(e) = client.start().await {

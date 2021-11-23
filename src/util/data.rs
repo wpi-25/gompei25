@@ -1,6 +1,7 @@
 use log::error;
-use redis::AsyncCommands;
 use std::env;
+
+use sqlx::{ConnectOptions, postgres::PgPool};
 
 pub fn get_redis_connection() -> Result<redis::Connection, redis::RedisError> {
     let client = match redis::Client::open(
@@ -21,4 +22,9 @@ pub fn get_redis_connection() -> Result<redis::Connection, redis::RedisError> {
             Err(e)
         }
     }
+}
+
+pub async fn get_db_pool() -> Result<PgPool, Box<dyn std::error::Error>> {
+    let pool = PgPool::connect(&env::var("POSTGRES_URL")?).await?;
+    Ok(pool)
 }

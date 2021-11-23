@@ -48,3 +48,8 @@ features = ["aio", "tokio-comp", "connection-manager"]
 [dependencies.serde]
 version = "1"
 features = ["derive"]
+
+[dependencies.sqlx]
+version = "0.5"
+features = ["postgres", "macros", "migrate", "runtime-tokio-native-tls"]
+
