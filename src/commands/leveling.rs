@@ -131,8 +131,8 @@ pub async fn levels(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
     let mut iter = leaderboard.chunks(PAGE_SIZE);
 
     let page_num = match args.parse::<usize>() {
-        Ok(num) => num,
-        Err(_) => 1,
+        Ok(num) => num - 1,
+        Err(_) => 0,
     };
 
     let page = match iter.nth(page_num) {
@@ -140,22 +140,21 @@ pub async fn levels(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
         None => iter.nth(1).unwrap().to_vec(),
     };
 
-
     msg.channel_id
         .send_message(&ctx.http, |m| {
             m.embed(|e| {
                 e.title("Leaderboard");
                 e.description(format!(
                     "**Page {}:** {}-{} of {}",
-                    page_num.to_string(),
-                    PAGE_SIZE * (page_num - 1) + 1,
-                    PAGE_SIZE * page_num,
+                    (page_num + 1).to_string(),
+                    PAGE_SIZE * page_num + 1,
+                    PAGE_SIZE * (page_num + 1),
                     leaderboard.len()
                 ));
 
                 for (i, l) in page.iter().enumerate() {
                     e.field(
-                        format!("#{}: {}", i + 1, l.member.display_name()),
+                        format!("#{}: {}", PAGE_SIZE * page_num + i + 1, l.member.display_name()),
                         format!("{} Exp.\tLvl. {}\t{} Messages", l.xp, l.level, l.msg_count),
                         false,
                     );
@@ -168,4 +167,3 @@ pub async fn levels(ctx: &Context, msg: &Message, args: Args) -> CommandResult {
 
     Ok(())
 }
-

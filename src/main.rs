@@ -11,8 +11,8 @@ use serenity::{
     http::Http,
     model::gateway::Ready,
     model::{
-        channel::{Attachment, Message, Reaction, ReactionType},
-        id::ChannelId,
+        channel::{Attachment, Message, MessageType, Reaction, ReactionType},
+        id::{ChannelId, UserId},
     },
     prelude::*,
     utils::MessageBuilder,
@@ -107,7 +107,8 @@ impl EventHandler for Handler {
                                     m.content(format!(
                                         "Message forwarded by <@{}> from <#{}>\n\n",
                                         reaction.clone().user_id.unwrap(),
-                                        channel_id.0
+                                        reaction.channel_id.0
+
                                     ));
                                     m.set_embed(message.embeds[0].clone().into());
                                     m
@@ -128,6 +129,63 @@ impl EventHandler for Handler {
 
     #[instrument(skip(self, ctx))]
     async fn message(&self, ctx: Context, msg: Message) {
+        if let None = msg.guild_id {
+            // It's in a DM
+            if !msg.author.bot {
+            if let Ok(chan) = env::var("PM_CHANNEL") {
+                // PM Logging is enabled
+                let channel_id = ChannelId(chan.parse::<u64>().unwrap());
+                channel_id
+                    .send_message(&ctx, |m| {
+                        m.embed(|e| {
+                            e.author(|a| {
+                                a.icon_url(msg.author.face());
+                                a.name(format!(
+                                    "DM from {}#{}",
+                                    msg.author.name, msg.author.discriminator
+                                ));
+                                a
+                            });
+                            e.description(msg.clone().content);
+                            e.footer(|f| {
+                                f.text(msg.clone().author.id.0);
+                                f
+                            });
+                            e
+                        });
+                        m
+                    })
+                    .await
+                    .unwrap();
+            }
+            }
+        } else {
+            if let Ok(chan) = env::var("PM_CHANNEL") {
+                let channel_id = ChannelId(chan.parse::<u64>().unwrap());
+                if channel_id == msg.channel_id {
+                    // It's a message in the PM channel
+                    // It's a reply, we can use funky magic
+                    if let Some(original_message) = msg.clone().referenced_message {
+                        let our_id = ctx.http.get_current_user().await.unwrap().id.0;
+                        if original_message.author.id == our_id {
+                            // It's our message
+                            if original_message.embeds.len() > 0 {
+                                // It's got an embed, probably one of our PM ones
+                                let pm_embed = original_message.embeds[0].clone();
+                                if let Some(footer) = pm_embed.footer {
+                                    let target_user = UserId(footer.text.parse::<u64>().unwrap());
+                                    if let Ok(pm) = target_user.create_dm_channel(&ctx).await {
+                                        pm.say(&ctx, msg.clone().content).await.unwrap();
+                                        msg.react(&ctx, '✅').await.unwrap();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        // Points
         if !msg
             .content
             .starts_with(&env::var("DISCORD_PREFIX").unwrap())
