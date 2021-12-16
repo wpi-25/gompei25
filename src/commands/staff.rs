@@ -94,9 +94,12 @@ pub async fn reactmsg(ctx: &Context, msg: &Message, mut args: Args) -> CommandRe
     let message_id: String = link_components[4].to_string();
     let message_id: u64 = message_id.parse::<u64>().unwrap_or(0u64);
 
-    let reaction = Emoji::convert(ctx, None, Some(channel_id.into()), &args.single::<String>()?).await?;
+    let reaction = args.single::<ReactionType>()?;
 
-    msg.channel_id.say(&ctx, format!("Emoji: {:?}", reaction)).await?;
+    let react_msg: Message = ctx.http.get_message(channel_id, message_id).await?;
+    react_msg.react(&ctx, reaction).await?;
+
+    msg.react(&ctx, '✅').await?;
 
     Ok(())
 }
