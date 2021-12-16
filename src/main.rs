@@ -194,6 +194,7 @@ async fn main() {
                 .prefix(&env::var("DISCORD_PREFIX").expect("No prefix in environment"))
         })
         .on_dispatch_error(hooks::dispatch_error_hook)
+        .after(hooks::after_cmd)
         .help(&HELP)
         .group(&META_GROUP)
         .group(&LEVELING_GROUP)

@@ -1,7 +1,8 @@
 use serenity::client::Context;
 use serenity::framework::standard::macros::hook;
-use serenity::framework::standard::{DispatchError, Reason};
+use serenity::framework::standard::{DispatchError, Reason, CommandError};
 use serenity::model::channel::Message;
+use tracing::error;
 
 #[hook]
 pub async fn dispatch_error_hook(ctx: &Context, msg: &Message, error: DispatchError) {
@@ -109,4 +110,11 @@ pub async fn dispatch_error_hook(ctx: &Context, msg: &Message, error: DispatchEr
             msg.channel_id.say(&ctx, "Unhandled dispatch error").await.unwrap();
         }
     };
+}
+
+#[hook]
+pub async fn after_cmd(_: &Context, _: &Message, cmd_name: &str, error: Result<(), CommandError>) {
+    if let Err(err) = error {
+        error!("Error in {}: {}", cmd_name, err);
+    }
 }
