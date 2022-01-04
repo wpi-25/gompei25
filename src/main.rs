@@ -115,6 +115,7 @@ impl EventHandler for Handler {
                                 .await
                                 .unwrap();
                         }
+                        reaction.delete(&ctx.http).await.unwrap();
                     } else {
                         return;
                     }
