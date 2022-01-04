@@ -50,7 +50,7 @@ struct Leveling;
 struct Fun;
 
 #[group]
-#[commands(clear, sendmsg)]
+#[commands(clear, sendmsg, editmsg, reactmsg)]
 struct Staff;
 
 struct Handler;
