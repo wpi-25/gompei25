@@ -25,6 +25,7 @@ use tracing::{error, info, instrument, warn};
 mod commands;
 
 pub mod errors;
+pub mod hooks;
 pub mod util;
 
 pub struct RedisConnection;
@@ -100,7 +101,6 @@ impl EventHandler for Handler {
                                 })
                                 .await
                                 .unwrap();
-
                         } else {
                             channel_id
                                 .send_message(&ctx.http, |m| {
@@ -108,6 +108,7 @@ impl EventHandler for Handler {
                                         "Message forwarded by <@{}> from <#{}>\n\n",
                                         reaction.clone().user_id.unwrap(),
                                         reaction.channel_id.0
+
                                     ));
                                     m.set_embed(message.embeds[0].clone().into());
                                     m
@@ -251,6 +252,8 @@ async fn main() {
             c.owners(owners)
                 .prefix(&env::var("DISCORD_PREFIX").expect("No prefix in environment"))
         })
+        .on_dispatch_error(hooks::dispatch_error_hook)
+        .after(hooks::after_cmd)
         .help(&HELP)
         .group(&META_GROUP)
         .group(&LEVELING_GROUP)
