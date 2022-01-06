@@ -51,7 +51,7 @@ struct Leveling;
 struct Fun;
 
 #[group]
-#[commands(clear, sendmsg)]
+#[commands(clear, sendmsg, editmsg, reactmsg)]
 struct Staff;
 
 struct Handler;
@@ -116,6 +116,7 @@ impl EventHandler for Handler {
                                 .await
                                 .unwrap();
                         }
+                        reaction.delete(&ctx.http).await.unwrap();
                     } else {
                         return;
                     }
