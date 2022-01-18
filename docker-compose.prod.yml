@@ -25,3 +25,4 @@ services:
     # However it is not recommended otherwise as it leaves the database open to any other process on the host or network
     # ports:
     #   - 6379:6379
+    restart: unless-stopped
